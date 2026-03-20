@@ -1,0 +1,36 @@
+# =========================
+# MODEL INPUT: RAW DATA
+# =========================
+
+# Ignore large raw-data files > 100 mb
+1_model_input/1_original_data/HydroSHEDS/n20e070_con.tif
+1_model_input/1_original_data/HydroSHEDS/n30e070_con.tif
+1_model_input/1_original_data/CRUTS_v4_09/cru_ts4.09.1901.2024.pet.dat.nc
+1_model_input/1_original_data/CRUTS_v4_09/cru_ts4.09.1901.2024.pre.dat.nc
+
+# =========================
+# MODEL INPUT: TEMP DATA
+# =========================
+# Ignore all NetCDF files in 2_temp_data
+1_model_input/2_temp_data/*.nc
+
+# =========================
+# MODEL INPUT: MODEL INPUT DATA
+# =========================
+
+# Ignore everything in 3_model_input_data
+#1_model_input/3_model_input_data/*
+
+# =========================
+# MODEL OUTPUT
+# =========================
+
+#2_model_output/
+
+
+# =========================
+# PYTHON CACHE
+# =========================
+
+__pycache__/
+*.pyc
