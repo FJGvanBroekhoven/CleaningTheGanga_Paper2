@@ -1,0 +1,17 @@
+{
+    "model_id": "model_647",
+    "success": false,
+    "error": "MODFLOW 6 did not terminate normally.",
+    "k": 47.02653535208994,
+    "d": 66.16937064693984,
+    "RIV_cond": 0.7701611502871311,
+    "DRN_cond": 0.12687752730697993,
+    "sy": 0.18465657436072958,
+    "rainfall_rch_factor": 0.5789776735546349,
+    "canal_rch_factor": 1.1849823012229923,
+    "irrigation_return_rch_factor": 0.4718379439470551,
+    "municipal_return_rch_factor": 2.2073749038481907,
+    "irrigation_demand_abs_factor": 0.8215283222214613,
+    "municipal_demand_abs_factor": 2.7708243564445616,
+    "industrial_demand_abs_factor": 1.6045609163162537
+}

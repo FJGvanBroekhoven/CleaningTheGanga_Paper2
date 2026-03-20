@@ -1,0 +1,24 @@
+{
+"type": "FeatureCollection",
+"name": "labels_points",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "id": 1, "Label": "New Delhi", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 77.209003943593387, 28.613451960157821 ] } },
+{ "type": "Feature", "properties": { "id": 2, "Label": "Ghaziabad", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 77.418134790249738, 28.669422663930995 ] } },
+{ "type": "Feature", "properties": { "id": 3, "Label": "Meerut", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 77.70709981903218, 28.983552815340143 ] } },
+{ "type": "Feature", "properties": { "id": 4, "Label": "Muzaffarnagar", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 77.698422190540228, 29.468632248041004 ] } },
+{ "type": "Feature", "properties": { "id": 6, "Label": "Roorkee", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 77.890089309856478, 29.869321743657494 ] } },
+{ "type": "Feature", "properties": { "id": 7, "Label": "Haridwar", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 78.146296291081768, 29.937549597675577 ] } },
+{ "type": "Feature", "properties": { "id": 8, "Label": "Saharanpur", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 77.544719695876267, 29.961196135316182 ] } },
+{ "type": "Feature", "properties": { "id": 9, "Label": "Panipat", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 76.974816444666459, 29.389991239832568 ] } },
+{ "type": "Feature", "properties": { "id": 10, "Label": "Shamli", "Type": "city" }, "geometry": { "type": "Point", "coordinates": [ 77.309772904456324, 29.450517698564028 ] } },
+{ "type": "Feature", "properties": { "id": 11, "Label": "Yamuna", "Type": "river" }, "geometry": { "type": "Point", "coordinates": [ 77.179825417789161, 29.817364443061873 ] } },
+{ "type": "Feature", "properties": { "id": 12, "Label": "Ganges", "Type": "river" }, "geometry": { "type": "Point", "coordinates": [ 78.054964251203856, 29.549225722660143 ] } },
+{ "type": "Feature", "properties": { "id": 13, "Label": "Krishni", "Type": "river" }, "geometry": { "type": "Point", "coordinates": [ 77.32777898357719, 29.275446543738646 ] } },
+{ "type": "Feature", "properties": { "id": 14, "Label": "Hindon", "Type": "river" }, "geometry": { "type": "Point", "coordinates": [ 77.494389450622904, 29.332285010361019 ] } },
+{ "type": "Feature", "properties": { "id": 15, "Label": "Kali", "Type": "river" }, "geometry": { "type": "Point", "coordinates": [ 77.675751886104976, 29.412553073911695 ] } },
+{ "type": "Feature", "properties": { "id": 17, "Label": "Upper Ganga Canal", "Type": "canal" }, "geometry": { "type": "Point", "coordinates": [ 77.883581088487531, 29.589576695147787 ] } },
+{ "type": "Feature", "properties": { "id": 18, "Label": "Eastern Yamuna Canal", "Type": "canal" }, "geometry": { "type": "Point", "coordinates": [ 77.446228612492476, 29.872467383985857 ] } },
+{ "type": "Feature", "properties": { "id": 19, "Label": "Shiwalik Hills", "Type": "mountains" }, "geometry": { "type": "Point", "coordinates": [ 77.852992448053371, 30.268709595000214 ] } }
+]
+}

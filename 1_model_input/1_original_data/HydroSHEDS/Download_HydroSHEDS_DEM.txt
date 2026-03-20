@@ -1,0 +1,5 @@
+Download:
+n20e070_con.tif
+n30e070_con.tif
+from:
+https://www.hydrosheds.org/hydrosheds-core-downloads
