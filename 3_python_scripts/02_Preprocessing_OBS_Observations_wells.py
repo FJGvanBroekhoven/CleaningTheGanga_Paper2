@@ -57,7 +57,7 @@ from shapely.geometry import Point
 # Paths
 # =============================================================================
 
-main_dir = r'C:\GitHub\Temp_CleaningTheGanga_Paper2'
+main_dir = r'C:\GitHub\CleaningTheGanga_Paper2_revisions'
 
 # --- Input ---
 wells_path = os.path.join(main_dir, '1_model_input', '1_original_data', 'Observation_wells', 'State_GWD_Hindon_WL.xlsx')

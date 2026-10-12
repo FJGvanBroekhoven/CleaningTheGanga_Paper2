@@ -4,7 +4,7 @@ All input data  for the Upper Ganges–Yamuna interfluve MODFLOW 6 model, organi
 
 ```
 1_model_input/
-├── 1_original_data/      # Raw downloaded datasets (read-only)
+├── 1_original_data/      # Raw downloaded datasets
 ├── 2_temp_data/          # Intermediate files produced by preprocessing scripts
 └── 3_model_input_data/   # Final model-ready input files consumed by the MODFLOW script
 ```

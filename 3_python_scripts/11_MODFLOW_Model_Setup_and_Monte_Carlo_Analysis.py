@@ -53,7 +53,7 @@ import rioxarray
 import xarray as xr
  
 # import own utils functions
-sys.path.append(r'C:\GitHub\Temp_CleaningTheGanga_Paper2\3_python_scripts')
+sys.path.append(r'C:\GitHub\CleaningTheGanga_Paper2_revisions\3_python_scripts')
 import MODFLOW_Model_Utils as utils
  
 
@@ -61,7 +61,7 @@ import MODFLOW_Model_Utils as utils
 # PATHS
 # =============================================================================
 
-main_dir = r'C:\GitHub\Temp_CleaningTheGanga_Paper2'
+main_dir = r'C:\GitHub\CleaningTheGanga_Paper2_revisions'
  
 # --- Input ---
 # Active-cell mask (value >= 0 = boundary cell, value = 1 = active interior cell)
@@ -79,8 +79,8 @@ OBS_META_PATH =         os.path.join(main_dir, '1_model_input', '3_model_input_d
 OBS_TS_PATH =           os.path.join(main_dir, '1_model_input', '3_model_input_data', 'timeseries_data_selected_observation_wells_yearly.csv')
 
 # --- Output ---
-BASE_WS = os.path.join(main_dir, '2_model_output', 'temp_MODFLOW_workspaces', '1500_MC_Runs_UGYI')   # Temporary MODFLOW workspaces
-OUTDIR  = os.path.join(main_dir, '2_model_output', 'model_output_data', '1500_MC_Runs_UGYI')   # Saved post-processed results
+BASE_WS = os.path.join(main_dir, '2_model_output', 'temp_MODFLOW_workspaces', '1500_Runs_UGYI_obs')   # Temporary MODFLOW workspaces
+OUTDIR  = os.path.join(main_dir, '2_model_output', 'model_output_data', '1500_Runs_UGYI_obs')   # Saved post-processed results
 
 
 #%% =============================================================================
@@ -110,6 +110,12 @@ MC_PARAMS = {
     'municipal_demand_abs_factor':  {'dist': 'log-uniform', 'min': 0.25,  'max': 4},
     'industrial_demand_abs_factor': {'dist': 'log-uniform', 'min': 0.25,  'max': 4},
 }
+
+
+# For revisions use original parameters combinations
+PARAM_SOURCE  = 'dataframe'   # 'random' or 'dataframe'
+PARAM_DF_PATH = os.path.join(main_dir, '1_model_input', '1_original_data', 'overview_original_params_for_revisions.csv')
+param_df = pd.read_csv(PARAM_DF_PATH, index_col='model_id')
 
 
 #%% =============================================================================
@@ -234,7 +240,7 @@ def create_model(
     municipal_demand_abs_factor=1,
     industrial_demand_abs_factor=1,
     workdir=None,
-):
+    ):
     """
     Construct and return a transient MODFLOW 6 groundwater flow simulation.
  
@@ -440,6 +446,7 @@ def run_model(model_id, model_params, input_arrays, obs_input, time_coords,
     -------
     dict with keys:
         'overview'         : dict            Parameters, metrics, realism checks.
+        'obs'              : pd.DataFrame    Simulated heads at obs locations (or None).
         'budget'           : pd.DataFrame    Annual water-balance fluxes (or None).
         'median_heads'     : np.ndarray      Spatial-median depth time series (or None).
         'heads_per_period' : np.ndarray      Mean head depth per sub-period (or None).
@@ -477,6 +484,7 @@ def run_model(model_id, model_params, input_arrays, obs_input, time_coords,
  
         return {
             'overview':         overview,
+            'obs':              obs_df,         # revisions, write obs
             'budget':           utils.get_budget(gwf, days_per_stress_period, time_coords),
             'median_heads':     utils.heads_median_mbgl(heads_mbgl),
             'heads_per_period': utils.means_per_period(heads_mbgl[:, 0, :, :]),
@@ -488,6 +496,7 @@ def run_model(model_id, model_params, input_arrays, obs_input, time_coords,
         return {
             'overview':         {'model_id': model_id, 'success': False,
                                  'error': str(e), **model_params},
+            'obs':              None,           # revisions, write obs
             'budget':           None,
             'median_heads':     None,
             'heads_per_period': None,
@@ -509,6 +518,7 @@ def save_result(model_id, result, outdir):
  
         outdir/
         +-- overview/          {model_id}_overview.json
+        +-- obs/               {model_id}_obs.csv
         +-- budget/            {model_id}_budget.csv
         +-- median_heads/      {model_id}_median_heads.npy
         +-- heads_per_period/  {model_id}_heads_per_period.npy
@@ -522,14 +532,17 @@ def save_result(model_id, result, outdir):
     outdir : str
         Root output directory.
     """
-    subdirs = ['overview', 'budget', 'median_heads', 'heads_per_period', 'GW_SW_per_period']
+    subdirs = ['overview', 'obs', 'budget', 'median_heads', 'heads_per_period', 'GW_SW_per_period'] # revisions, write obs, added 'obs'
     paths   = {s: os.path.join(outdir, s) for s in subdirs}
     for p in paths.values():
         os.makedirs(p, exist_ok=True)
  
     with open(os.path.join(paths['overview'], f'{model_id}_overview.json'), 'w') as f:
         json.dump(result['overview'], f, indent=4)
- 
+    
+    if result['obs'] is not None:                   # revisions, write obs
+        result['obs'].to_csv(os.path.join(paths['obs'], f'{model_id}_obs.csv'))
+        
     if result['budget'] is not None:
         result['budget'].to_csv(os.path.join(paths['budget'], f'{model_id}_budget.csv'))
  
@@ -571,13 +584,45 @@ def generate_parameter_combinations(params, num_samples):
             sample[param_name] = np.float64(value)
         samples.append(sample)
     return samples
+
+
+# For revisions use original parameters combinations
+def load_parameter_combinations_from_df(df, params):
+    """
+    Extract Monte Carlo parameter combinations from an existing results dataframe
+    (e.g. the concatenated 'overview' outputs from a previous ensemble run).
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Must contain one column per key in `params`, plus model_id as index.
+    params : dict
+        MC_PARAMS specification (used only to select which columns to pull).
+
+    Returns
+    -------
+    model_ids : list of str
+    model_configs : list of dict
+        Each dict maps parameter name -> np.float64 value, matching the
+        format generate_parameter_combinations() produces.
+    """
+    missing = [p for p in params if p not in df.columns]
+    if missing:
+        raise ValueError(f"Dataframe is missing required parameter columns: {missing}")
+
+    model_ids = df.index.astype(str).tolist()
+    model_configs = [
+        {p: np.float64(row[p]) for p in params}
+        for _, row in df.iterrows()
+    ]
+    return model_ids, model_configs
  
  
 # =============================================================================
 # ENSEMBLE RUNNER
 # =============================================================================
  
-def run_ensemble(model_configs, input_arrays, obs_input, time_coords,
+def run_ensemble_OLD(model_configs, input_arrays, obs_input, time_coords,
                  timeseries_df, perioddata, days_per_stress_period, base_ws, outdir):
     """
     Run the full Monte Carlo ensemble serially, saving outputs after each run.
@@ -613,37 +658,72 @@ def run_ensemble(model_configs, input_arrays, obs_input, time_coords,
         save_result(model_id, result, outdir)
         results[model_id] = result
     return results
- 
+
+
+# For revisions use original parameters combinations
+def run_ensemble(model_ids, model_configs, input_arrays, obs_input, time_coords,
+                 timeseries_df, perioddata, days_per_stress_period, base_ws, outdir):
+    results = {}
+    for i, (model_id, config) in enumerate(zip(model_ids, model_configs)):
+        print(f"Running {model_id} ({i + 1}/{len(model_configs)})")
+        result = run_model(
+            model_id, config, input_arrays, obs_input, time_coords,
+            timeseries_df, perioddata, days_per_stress_period, base_ws,
+        )
+        save_result(model_id, result, outdir)
+        results[model_id] = result
+    return results
  
 #%% =============================================================================
 # SETUP MODELS AND PERFORM MONTE CARLO ANALYSIS
 # =============================================================================
 
 # --- Monte Carlo parameter sampling ---
-print(f"\nGenerating {N_RUNS} parameter combinations...")
-model_configs = generate_parameter_combinations(MC_PARAMS, N_RUNS)
+#print(f"\nGenerating {N_RUNS} parameter combinations...")
+#model_configs = generate_parameter_combinations(MC_PARAMS, N_RUNS)
  
+# NEW--- Monte Carlo parameter sampling --- For revisions to use original parameters combinations
+if PARAM_SOURCE == 'random':
+    print(f"\nGenerating {N_RUNS} parameter combinations...")
+    model_configs = generate_parameter_combinations(MC_PARAMS, N_RUNS)
+    model_ids = [f'model_{i}' for i in range(len(model_configs))]
+
+elif PARAM_SOURCE == 'dataframe':
+    print(f"\nLoading parameter combinations from {PARAM_DF_PATH}...")
+    #param_df = pd.read_csv(PARAM_DF_PATH)
+    model_ids, model_configs = load_parameter_combinations_from_df(param_df, MC_PARAMS)
+    print(f"Loaded {len(model_configs)} parameter combinations.")
+
+else:
+    raise ValueError(f"Unknown PARAM_SOURCE '{PARAM_SOURCE}'. Use 'random' or 'dataframe'.")
+
 # --- Run ensemble ---
 os.makedirs(BASE_WS, exist_ok=True)
 os.makedirs(OUTDIR,  exist_ok=True)
- 
-print(f"Starting Monte Carlo ensemble ({N_RUNS} runs)...\n")
+
+print(f"Starting ensemble ({len(model_configs)} runs)...\n")
 t0 = time.time()
- 
+
 results = run_ensemble(
-    model_configs, 
-    input_arrays, 
-    obs_input, 
+    model_ids, # added for revisions to use original parameters combinations
+    model_configs,
+    input_arrays,
+    obs_input,
     time_coords,
-    timeseries_df, 
-    perioddata, 
-    days_per_stress_period, 
-    BASE_WS, 
+    timeseries_df,
+    perioddata,
+    days_per_stress_period,
+    BASE_WS,
     OUTDIR,
-    )
- 
+)
+
 elapsed = time.time() - t0
 print(f"\nEnsemble complete.")
 print(f"Total time   : {elapsed:.1f} s")
-print(f"Avg per run  : {elapsed / N_RUNS:.1f} s")
+print(f"Avg per run  : {elapsed / len(model_configs):.1f} s")
+
+
+
+
+
 

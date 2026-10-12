@@ -29,7 +29,11 @@ Figure 4 – Recharge and abstraction budget over time
 Figure 6 – Spatial variation of recharge and abstraction components
     Grid of spatial maps showing the time-averaged recharge and abstraction
     [mm/year] for each component across five historical time periods.
-
+    
+Figure A.1 – Spatial variation of recharge and abstraction components,
+    maps showing the time-averaged recharge and abstraction [mm/year] 
+    for the period 2000-2016
+   
 """
 
 #%% =============================================================================
@@ -47,12 +51,15 @@ import geopandas as gpd
 import os
 from shapely.geometry import box
 
+# Set pdf.fonttype to make sure that the figure labels are 'text' in the pdf exports and not 'outlines'
+plt.rcParams['pdf.fonttype'] = 42 
+
 
 #%% =============================================================================
 # Paths
 # =============================================================================
 
-main_dir = r'C:\GitHub\Temp_CleaningTheGanga_Paper2'
+main_dir = r'C:\GitHub\CleaningTheGanga_Paper2_revisions'
 
 # --- Input ---
 mask_path                = os.path.join(main_dir, '1_model_input', '1_original_data', 'Model_Mask.tif')
@@ -200,6 +207,11 @@ ax.set_axis_off()
 plt.tight_layout()
 plt.show()
 
+# save as 600 dpi raster png
+# outfile
+fig_1B_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_1B.png')
+fig.savefig(fig_1B_path, dpi=600,bbox_inches="tight")
+
 
 #%% =============================================================================
 # Figure 1C – Location of study area within the Indo-Gangetic Basin
@@ -318,7 +330,11 @@ ax1.legend(handles, labels_to_show, loc='upper left')
  
 plt.tight_layout()
 plt.show()
- 
+
+# save as PDF file
+# outfile
+fig_4_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_4.pdf')
+fig.savefig(fig_4_path, format="pdf", bbox_inches="tight")
  
 #%% =============================================================================
 # Figure 6 – Spatial variation of recharge and abstraction components
@@ -352,7 +368,7 @@ nrows = len(time_slices)
 ncols = len(vars_to_plot) + 1   # one extra column for net recharge
 
 fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
-                         figsize=(4 * ncols, 3 * nrows),
+                         figsize=(2 * ncols, 8 * nrows),
                          constrained_layout=True)
 
 time_items = list(time_slices.items()) 
@@ -399,3 +415,79 @@ fig.colorbar(im, ax=axes, orientation='vertical',
              label='mm/year')
 
 plt.show()
+
+# save as 600 dpi raster png
+# outfile
+fig_6_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_6.png')
+fig.savefig(fig_6_path, dpi=600,bbox_inches="tight")
+
+#%% =============================================================================
+# Figure A.1 – Spatial variation of recharge and abstraction components
+# for the last period (2000–2016)
+# =============================================================================
+
+import matplotlib.colors as mcolors
+
+t0, t1 = time_slices['2000–2016']
+
+# End color per component
+color_dict = {
+    'municipal_return_rch':  '#08306B',   # deep navy
+    'canal_rch':             '#1F78B4',   # medium blue
+    'irrigation_return_rch': '#6BAED6',   # cornflower blue
+    'rainfall_rch':          '#6A51A3',   # purple
+    'industrial_demand_abs': '#E31A1C',   # strong red
+    'municipal_demand_abs':  '#FF7F00',   # orange
+    'irrigation_demand_abs': '#FDBF6F',   # light orange
+}
+
+# Manual colorbar caps per component (overrides the data max where set)
+vmax_overrides = {
+    'industrial_demand_abs': 3000,
+}
+
+for var in vars_to_plot:
+    da = (components_mm[var]
+          .isel(time=slice(t0, t1 + 1))
+          .mean(dim='time', skipna=True))
+
+    end_color = color_dict.get(var, '#525252')  # fallback: dark grey
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        f"{var}_cmap", ['white', end_color]
+    )
+
+    # Scale to this component's own data range; white = 0
+    data_max = float(np.nanmax(np.abs(da.values)))
+    vmin_c = 0
+    vmax_c = vmax_overrides.get(var, data_max)
+    da_abs = np.abs(da)  # magnitude only; colormap color signals recharge vs abstraction
+
+    # If this component is capped and its true data max exceeds the cap,
+    # extend the colorbar with a triangle at the top
+    is_capped = (var in vmax_overrides) and (data_max > vmax_c)
+    extend_dir = 'max' if is_capped else 'neither'
+
+    fig, ax = plt.subplots(figsize=(5, 7), constrained_layout=True)
+
+    bg = da.copy()
+    bg[:] = 1
+    bg.plot(ax=ax, color='lightgrey', add_colorbar=False)
+
+    im = da_abs.plot(ax=ax, cmap=cmap, vmin=vmin_c, vmax=vmax_c, add_colorbar=False)
+    labels.plot(ax=ax, color=None, edgecolor=None, markersize=0, alpha=0)  # don't show but use geopandas to make sure that proportions are fixed
+
+    col_label = label_names.get(var, var)
+    flow_type = 'recharge' if var.endswith('_rch') else 'abstraction'
+    ax.set_title(f"{col_label} ({flow_type}, 2000–2016)", fontsize=11, fontweight='bold')
+    ax.set_axis_off()
+
+    fig.colorbar(im, ax=ax, orientation='vertical',
+                 fraction=0.046, pad=0.04,
+                 extend=extend_dir,
+                 label='mm/year')
+    plt.show()
+    
+    # save as 600 dpi raster png
+    # outfile
+    fig_A1_path = os.path.join(main_dir, '2_model_output', 'figures', f'fig_A1_{var}.png')
+    fig.savefig(fig_A1_path, dpi=600,bbox_inches="tight")

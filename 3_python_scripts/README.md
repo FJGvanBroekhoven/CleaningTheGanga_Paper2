@@ -68,12 +68,12 @@ Utility module imported by the model script. Contains three sections:
 ### Postprocessing
 
 **`21_Postprocessing_Analyse_and_Plot_Model_Input.py`**  
-Generates figures describing the model input data (Figures 1, 4, and 6 in the manuscript): study area map, MODFLOW boundary condition categories, basin location within the Indo-Gangetic Plain, recharge/abstraction budget time series, and spatial maps of recharge components per historical period.
+Generates figures describing the model input data (Figures 1, 4, 6 and A1 in the manuscript): study area map, MODFLOW boundary condition categories, basin location within the Indo-Gangetic Plain, recharge/abstraction budget time series, and spatial maps of recharge components per historical period.
 
 ---
 
 **`22_Postprocessing_Analyse_and_Plot_Model_Output.py`**  
-Loads and filters Monte Carlo results, applies validity criteria, and generates output figures (Figures 3, 5, 7, 8, 9, 10 in the manuscript): parameter distributions, net recharge time series, median groundwater depth, spatial head maps, GW–SW exchange time series, and spatial GW–SW interaction maps.
+Loads and filters Monte Carlo results, applies validity criteria, and generates output figures (Figures 3, 5, 7, 8, 9, 10, B1, B2, and B3 in the manuscript): parameter distributions, net recharge time series, median groundwater depth, spatial head maps, GW–SW exchange time series, and spatial GW–SW interaction maps.
 
 ---
 

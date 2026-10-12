@@ -10,7 +10,8 @@ Model results from the MODFLOW 6 Monte Carlo ensemble. All files are generated b
         ├── budget/
         ├── median_heads/
         ├── heads_per_period/
-        └── GW_SW_per_period/
+        ├── GW_SW_per_period/
+        └── obs/
 └── temp_MODFLOW_workspaces/
     └── <run_name>/
 

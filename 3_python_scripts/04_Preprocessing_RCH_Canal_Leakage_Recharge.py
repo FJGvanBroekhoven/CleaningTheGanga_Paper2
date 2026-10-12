@@ -57,7 +57,7 @@ from shapely.geometry import box
 # Paths
 # =============================================================================
  
-main_dir = r'C:\GitHub\Temp_CleaningTheGanga_Paper2'
+main_dir = r'C:\GitHub\CleaningTheGanga_Paper2_revisions'
  
 # --- Input ---
 mask_path   = os.path.join(main_dir, '1_model_input', '1_original_data', 'Model_Mask.tif')

@@ -81,7 +81,7 @@ from shapely.geometry import box
 # Paths
 # =============================================================================
 
-main_dir = r'C:\GitHub\Temp_CleaningTheGanga_Paper2'
+main_dir = r'C:\GitHub\CleaningTheGanga_Paper2_revisions'
 
 # --- Input ---
 dem_tile_1_path = os.path.join(main_dir, '1_model_input', '1_original_data', 'HydroSHEDS', 'n20e070_con.tif')

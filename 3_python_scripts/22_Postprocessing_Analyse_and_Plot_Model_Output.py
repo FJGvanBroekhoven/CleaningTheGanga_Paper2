@@ -21,6 +21,7 @@ Figure 7  – Median groundwater depth time series
 Figure 8  – Spatial groundwater depth maps
     Part 1: Mean head depth below ground level [m bGL] per historical period.
     Part 2: Change in head depth between consecutive periods [m bGL].
+    part 3: Change between periods 1800-1830 and 2000-2016.
  
 Figure 9  – GW–SW exchange time series
     Ensemble min–mean–max of groundwater–surface water exfiltration fluxes
@@ -29,6 +30,12 @@ Figure 9  – GW–SW exchange time series
 Figure 10 – Spatial GW–SW interaction maps
     Part 1: Mean GW–SW exchange [m³/year per cell] per historical period.
     Part 2: Change in GW–SW exchange between consecutive periods [m³/year].
+    part 3: Change between periods 1800-1830 and 2000-2016.
+    
+Figures appendix B – comparison obs and sim heads and trends.
+    B.1 Scatter plot, observed vs simulated heads
+    B.3 Box plot, observed vs simulated trends
+    B.3 Plot wells obs vs sim with the most observations
 """
  
 #%% =============================================================================
@@ -38,23 +45,25 @@ Figure 10 – Spatial GW–SW interaction maps
 import json
 import os
 from datetime import datetime
- 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xarray as xr
 import geopandas as gpd
+from scipy.stats import theilslopes
 from matplotlib.colors import BoundaryNorm, ListedColormap
+
+# Set pdf.fonttype to make sure that the figure labels are 'text' in the pdf exports and not 'outlines'
+plt.rcParams['pdf.fonttype'] = 42 
  
  
 #%% =============================================================================
 # Paths and settings
 # =============================================================================
  
-main_dir = r'C:\GitHub\Temp_CleaningTheGanga_Paper2'
+main_dir = r'C:\GitHub\CleaningTheGanga_Paper2_revisions'
  
-#outdir = r'C:\temp_model_output\1500_runs_FINAL_v04'
-outdir    = os.path.join(main_dir, '2_model_output', 'model_output_data', '1500_MC_Runs_UGYI')
+outdir    = os.path.join(main_dir, '2_model_output', 'model_output_data', '1500_Runs_UGYI_obs')
 mask_path = os.path.join(main_dir, '1_model_input', '1_original_data', 'Model_Mask.tif')
 label_path = os.path.join(main_dir, '1_model_input', '1_original_data', 'labels_points.geojson')
  
@@ -99,15 +108,24 @@ PARAM_LABELS = {
 }
  
 # Validity criteria (applied to the overviews DataFrame)
-VALIDITY_CRITERIA = {
-    'pct_above_gl':     ('<=', 2.5),
-    'pct_below_50mbgl': ('<=', 5.0),
-    'MAE':              ('<=', 7.5),
-    'mean_error':       ('between', -5, 5),
-    'Q_avg_1997_1999':  ('<',  100),
-    'Q_avg_1800_1825':  ('>=', 0),
-}
- 
+#VALIDITY_CRITERIA = {
+#    'pct_above_gl':     ('<=', 2.5),
+#    'pct_below_50mbgl': ('<=', 5.0),
+#    'MAE':              ('<=', 7.5),
+#    'mean_error':       ('between', -5, 5),
+#    'Q_avg_1997_1999':  ('<',  100),
+#    'Q_avg_1800_1825':  ('>=', 0),
+#}
+
+# Revisions, comparison wells obs vs sim
+# Observation well metadata (GeoJSON) and head time series (CSV)
+OBS_META_PATH =         os.path.join(main_dir, '1_model_input', '3_model_input_data', 'metadata_selected_observation_wells_yearly.geojson')
+OBS_TS_PATH =           os.path.join(main_dir, '1_model_input', '3_model_input_data', 'timeseries_data_selected_observation_wells_yearly.csv') 
+obs_wells_gdf = gpd.read_file(OBS_META_PATH)
+obs_wells_gdf.set_index('well_id', inplace=True)
+timeseries_df = pd.read_csv(OBS_TS_PATH, parse_dates=['date'], index_col='date')
+timeseries_df.columns = timeseries_df.columns.str.upper()
+
  
 #%% =============================================================================
 # Load model output
@@ -134,7 +152,46 @@ def merge_overviews(outdir):
             with open(os.path.join(overview_dir, fname), 'r') as f:
                 records.append(json.load(f))
     return pd.DataFrame(records).set_index('model_id')
- 
+
+
+# Revisions, added the simulated heads at obs locations    
+def merge_obs_to_xarray(outdir):
+    """
+    Load all per-run obs CSVs and return them as an xarray Dataset.
+
+    Each observation well becomes a Dataset variable with dimensions
+    (time, model_id).
+
+    Parameters
+    ----------
+    outdir : str
+        Root output directory containing an 'obs' subdirectory.
+
+    Returns
+    -------
+    xr.Dataset
+        Dimensions: time, model_id.
+    """
+    obs_dir = os.path.join(outdir, 'obs')
+    dfs = {}
+    for fname in os.listdir(obs_dir):
+        if fname.endswith('.csv'):
+            model_id = '_'.join(fname.split('_')[:2])
+            dfs[model_id] = pd.read_csv(
+                os.path.join(obs_dir, fname), index_col=0, parse_dates=True
+            )
+
+    time_index = next(iter(dfs.values())).index
+    variables  = next(iter(dfs.values())).columns
+    model_ids  = list(dfs.keys())
+
+    ds = xr.Dataset(coords={'time': time_index, 'model_id': model_ids})
+    for var in variables:
+        data = np.stack([dfs[mid][var].values for mid in model_ids], axis=1)
+        ds[var] = (('time', 'model_id'), data)
+
+    return ds.transpose('time', 'model_id')
+
  
 def merge_budgets_to_xarray(outdir):
     """
@@ -251,7 +308,14 @@ def build_spatial_xarray(data, model_ids, period_labels, mask_da):
         },
     )
  
- 
+#%% === Area study area
+#mask_da.plot()
+#count = (mask_da != -1).sum().item() # all non -1 values    # 16759 km2
+#ount = (mask_da == 1).sum().item() # all 1 values    # 16135 km2
+## so roughly 16500 km2
+## widest point roughtly 100 km
+## longest roughly 220 km
+
 #%% =============================================================================
 # Assemble combined dataset
 # =============================================================================
@@ -259,6 +323,56 @@ def build_spatial_xarray(data, model_ids, period_labels, mask_da):
 # --- Overviews ---
 overviews = merge_overviews(outdir)
 overviews['mean_error'] = overviews['Simulated Mean'] - overviews['Observed Mean']
+
+#NEW CODE EXPORT PARAM DF LIST FOR REVISIONS
+#overviews_clean = overviews[list(MC_PARAMS)].copy()
+#overviews_clean_output_path = os.path.join(main_dir, '1_model_input', '1_original_data', 'overview_original_params_for_revisions.csv')
+#overviews_clean.to_csv(overviews_clean_output_path)
+
+# --- Obs ---
+obs_xarray = merge_obs_to_xarray(outdir)
+
+### ADDED REVISIONS DOWN ###
+# =============================================================================
+# Calculate Theil-Sen slopes
+# =============================================================================
+
+# Calculate observed Theil-Sen slopes for the obersations
+obs_slopes = {}
+for well in timeseries_df.columns:
+    obs = timeseries_df[well]
+    mask = obs.notna()
+    if mask.sum() < 3:
+        obs_slopes[well] = np.nan
+        continue
+    x = obs.index.year.values[mask]
+    y = obs.values[mask]
+    obs_slopes[well] = theilslopes(y, x).slope
+obs_slopes = pd.Series(obs_slopes, name="obs_slope")
+
+# Calculate simulated slopes using the observation years
+sim_slopes = {}
+for well in timeseries_df.columns:
+    obs = timeseries_df[well]
+    mask = obs.notna()
+    if mask.sum() < 3:
+        continue
+    obs_times = obs.index[mask]
+    x = obs_times.year.values
+    sim = obs_xarray[well].sel(time=obs_times)
+    slopes = []
+    for model in sim.model_id.values:
+        y = sim.sel(model_id=model).values
+        slopes.append(theilslopes(y, x).slope)
+    sim_slopes[well] = pd.Series(slopes, index=sim.model_id.values)
+sim_slopes = pd.DataFrame(sim_slopes)
+
+# add mean slopes to overviews df
+overviews['obs_mean_slope'] = obs_slopes.mean()
+overviews['sim_mean_slope'] = sim_slopes.mean(axis=1) # Row-wise mean (across wells)
+overviews['slope_error'] = abs(overviews['obs_mean_slope'] - overviews['sim_mean_slope'])
+### ADDED REVISIONS UP ###
+
  
 # --- Budgets (converted to m³/s; sign flipped so positive = discharge) ---
 budget_xarray      = merge_budgets_to_xarray(outdir)
@@ -322,6 +436,28 @@ print(f"Valid runs: {len(overviews_valid)} / {len(overviews)}")
 total_valid    = total_xarray.sel(model_id=overviews_valid.index)
 heads_da_valid = heads_da.sel(model_id=overviews_valid.index)
 GW_SW_da_valid = GW_SW_da.sel(model_id=overviews_valid.index)
+
+
+
+# Revisions, count for each criteria how many realisations are rejected
+cols = ['pct_above_gl', 'pct_below_50mbgl', 'MAE', 'mean_error', 'Q_avg_1997_1999', 'Q_avg_1800_1825']
+overviews_clean = overviews.dropna(subset=cols)
+
+total = len(overviews_clean)
+
+criteria = [
+    ('pct_above_gl > 2.5',     overviews_clean['pct_above_gl'] > 2.5),
+    ('pct_below_50mbgl > 5.0', overviews_clean['pct_below_50mbgl'] > 5.0),
+    ('MAE > 7.5',              overviews_clean['MAE'] > 7.5),
+    ('mean_error > 5.0',       overviews_clean['mean_error'] > 5.0),
+    ('mean_error < -5.0',      overviews_clean['mean_error'] < -5.0),
+    ('Q_avg_1997_1999 >= 65',  overviews_clean['Q_avg_1997_1999'] >= 65),
+    ('Q_avg_1800_1825 < 0',    overviews_clean['Q_avg_1800_1825'] < 0)
+]
+
+for name, mask in criteria:
+    count = mask.sum()
+    print(f"{name}: {count} / {total} ({100*count/total:.1f}%)")
  
  
 #%% =============================================================================
@@ -370,10 +506,13 @@ def make_spatial_figure(da, cmap, norm, bounds, cbar_label, title_fn):
     fig : matplotlib.figure.Figure
     """
     n_panels = len(da.period)
-    fig = plt.figure(figsize=(5 * n_panels, 5))
-    gs  = fig.add_gridspec(2, n_panels, height_ratios=[1, 0.05],
-                           wspace=0.05, hspace=0.3)
- 
+    #fig = plt.figure(figsize=(5 * n_panels, 5))
+    fig = plt.figure(figsize=(5 * n_panels + 1, 5))  # revised
+    #gs  = fig.add_gridspec(2, n_panels, height_ratios=[1, 0.05],
+    #                       wspace=0.05, hspace=0.3)
+    gs  = fig.add_gridspec(1, n_panels + 1, 
+                           width_ratios=[1] * n_panels + [0.05],
+                           wspace=0.05)  # revised 
     for i, period in enumerate(da.period):
         ax = fig.add_subplot(gs[0, i])
         da.sel(period=period).mean("model_id").plot(
@@ -386,10 +525,12 @@ def make_spatial_figure(da, cmap, norm, bounds, cbar_label, title_fn):
         ax.set_xlabel('')
         ax.set_ylabel('')
  
-    cbar_ax = fig.add_subplot(gs[1, :])
+    #cbar_ax = fig.add_subplot(gs[1, :])
+    cbar_ax = fig.add_subplot(gs[0, -1])  # revised
     cbar = fig.colorbar(
         plt.cm.ScalarMappable(norm=norm, cmap=cmap),
-        cax=cbar_ax, orientation='horizontal'
+        #cax=cbar_ax, orientation='horizontal'
+        cax=cbar_ax, orientation='vertical'  # revised
     )
     cbar.set_ticks(bounds)
     cbar.set_ticklabels([str(b) for b in bounds])
@@ -415,10 +556,13 @@ def make_difference_figure(da, cmap, norm, bounds, cbar_label):
     fig : matplotlib.figure.Figure
     """
     n_diff = len(da.period) - 1
-    fig = plt.figure(figsize=(5 * n_diff, 5))
-    gs  = fig.add_gridspec(2, n_diff, height_ratios=[1, 0.05],
-                           wspace=0.05, hspace=0.3)
- 
+    #fig = plt.figure(figsize=(5 * n_diff, 5))
+    fig = plt.figure(figsize=(5 * n_diff + 1, 5))  # revised
+    #gs  = fig.add_gridspec(2, n_diff, height_ratios=[1, 0.05],
+    #                       wspace=0.05, hspace=0.3)
+    gs  = fig.add_gridspec(1, n_diff + 1,
+                           width_ratios=[1] * n_diff + [0.05],
+                           wspace=0.05)  # revised 
     for i in range(n_diff):
         ax   = fig.add_subplot(gs[0, i])
         curr = da.period[i + 1]
@@ -433,10 +577,12 @@ def make_difference_figure(da, cmap, norm, bounds, cbar_label):
         ax.set_xlabel('')
         ax.set_ylabel('')
  
-    cbar_ax = fig.add_subplot(gs[1, :])
+    #cbar_ax = fig.add_subplot(gs[1, :])
+    cbar_ax = fig.add_subplot(gs[0, -1])  # revised
     cbar = fig.colorbar(
         plt.cm.ScalarMappable(norm=norm, cmap=cmap),
-        cax=cbar_ax, orientation='horizontal'
+        #cax=cbar_ax, orientation='horizontal'
+        cax=cbar_ax, orientation='vertical'  # revised
     )
     cbar.set_ticks(bounds)
     cbar.set_ticklabels([str(b) for b in bounds])
@@ -502,10 +648,16 @@ def plot_parameter_histograms(params, all_df, valid_df, param_labels, ncols=3):
  
     plt.tight_layout()
     plt.show()
+    
+    return fig, axes
  
  
-plot_parameter_histograms(MC_PARAMS, overviews, overviews_valid, PARAM_LABELS)
- 
+fig, axex = plot_parameter_histograms(MC_PARAMS, overviews, overviews_valid, PARAM_LABELS)
+
+# save as PDF file
+# outfile
+fig_3_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_3.pdf')
+fig.savefig(fig_3_path, format="pdf", bbox_inches="tight") 
  
 #%% =============================================================================
 # Figure 5 – Net recharge time series
@@ -526,7 +678,11 @@ ax.grid(True, linestyle='--', alpha=0.7)
 ax.legend()
 plt.tight_layout()
 plt.show()
- 
+
+# save as PDF file
+# outfile
+fig_5_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_5.pdf')
+fig.savefig(fig_5_path, format="pdf", bbox_inches="tight") 
  
 #%% =============================================================================
 # Figure 7 – Median groundwater depth time series
@@ -548,7 +704,11 @@ ax.grid(True, linestyle='--', alpha=0.7)
 ax.legend()
 plt.tight_layout()
 plt.show()
- 
+
+# save as PDF file
+# outfile
+fig_7_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_7.pdf')
+fig.savefig(fig_7_path, format="pdf", bbox_inches="tight")  
  
 #%% =============================================================================
 # Figure 9 – GW–SW exchange time series
@@ -593,6 +753,11 @@ fig.supxlabel('Year')
 plt.subplots_adjust(hspace=0.05)
 plt.tight_layout()
 plt.show()
+
+# save as PDF file
+# outfile
+fig_9_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_9.pdf')
+fig.savefig(fig_9_path, format="pdf", bbox_inches="tight") 
  
  
 #%% =============================================================================
@@ -624,6 +789,11 @@ fig = make_spatial_figure(
     title_fn=lambda p: str(p.values),
 )
 plt.show()
+
+# save as 600 dpi raster png
+# outfile
+fig_8B_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_8B.png')
+fig.savefig(fig_8B_path, dpi=600,bbox_inches="tight")
  
 # Part 2: change between consecutive periods
 fig = make_difference_figure(
@@ -631,8 +801,33 @@ fig = make_difference_figure(
     cbar_label='Difference in metres below ground level',
 )
 plt.show()
- 
- 
+
+# save as 600 dpi raster png
+# outfile
+fig_8C_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_8C.png')
+fig.savefig(fig_8C_path, dpi=600,bbox_inches="tight")
+
+# Revisions
+# Part 3: change between first and last period
+fig, ax = plt.subplots()
+last = heads_da_valid.period[-1]
+first = heads_da_valid.period[0]
+diff = (heads_da_valid.sel(period=last).mean("model_id")
+        - heads_da_valid.sel(period=first).mean("model_id"))
+diff.plot(ax=ax, x='x', y='y', cmap=heads_diff_cmap, norm=heads_diff_norm, add_colorbar=False)
+labels.plot(ax=ax, color=None, edgecolor=None, markersize=0, alpha=0) # don't show but use geopandas to make sure that proportions are fixed
+ax.set_title(f"{last.values} − {first.values}")
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_xlabel('')
+ax.set_ylabel('')
+plt.show()
+
+# save as 600 dpi raster png
+# outfile
+fig_8A_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_8A.png')
+fig.savefig(fig_8A_path, dpi=600,bbox_inches="tight")
+
 #%% =============================================================================
 # Figure 10 – Spatial GW–SW interaction maps
 # =============================================================================
@@ -663,6 +858,11 @@ fig = make_spatial_figure(
     title_fn=lambda p: str(p.values),
 )
 plt.show()
+
+# save as 600 dpi raster png
+# outfile
+fig_10B_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_10B.png')
+fig.savefig(fig_10B_path, dpi=600,bbox_inches="tight")
  
 # Part 2: change between consecutive periods
 fig = make_difference_figure(
@@ -670,3 +870,240 @@ fig = make_difference_figure(
     cbar_label='Difference in m³/year per cell',
 )
 plt.show()
+
+# save as 600 dpi raster png
+# outfile
+fig_10C_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_10C.png')
+fig.savefig(fig_10C_path, dpi=600,bbox_inches="tight")
+
+# Revisions
+# Part 3: change between first and last period
+fig, ax = plt.subplots()
+last = GW_SW_da_valid.period[-1]
+first = GW_SW_da_valid.period[0]
+diff = (GW_SW_da_valid.sel(period=last).mean("model_id")
+        - GW_SW_da_valid.sel(period=first).mean("model_id"))
+diff.plot(ax=ax, x='x', y='y', cmap=gwsw_diff_cmap, norm=gwsw_diff_norm, add_colorbar=False)
+labels.plot(ax=ax, color=None, edgecolor=None, markersize=0, alpha=0) # don't show but use geopandas to make sure that proportions are fixed
+ax.set_title(f"{last.values} − {first.values}")
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_xlabel('')
+ax.set_ylabel('')
+plt.show()
+
+# save as 600 dpi raster png
+# outfile
+fig_10A_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_10A.png')
+fig.savefig(fig_10A_path, dpi=600,bbox_inches="tight")
+
+#%% ### ADDED REVISIONS DOWN ###
+# =============================================================================
+# Make plots comparisons observed and simulated heads and trends
+# =============================================================================
+
+# get overview stats trends (theil-sen slope) per well
+
+# Select valid models
+sim_slopes_valid = sim_slopes.loc[overviews_valid.index]
+
+# get df with stats per well
+trend_summary = pd.DataFrame({
+    "obs_slope": obs_slopes,
+    "sim_min": sim_slopes_valid.min(),
+    "sim_median": sim_slopes_valid.median(),
+    "sim_max": sim_slopes_valid.max(),
+    "n_obs": timeseries_df.notna().sum()
+    })
+
+# =============================================================================
+# Ensemble statistics for simulated heads
+# =============================================================================
+
+# Select valid models
+obs_xarray_valid = obs_xarray.sel(model_id=overviews_valid.index)
+
+# get stats per well
+sim_median = obs_xarray_valid.median("model_id")
+sim_min = obs_xarray_valid.min("model_id")
+sim_max = obs_xarray_valid.max("model_id")
+
+# Build dataframe with observed and simulated heads
+rows = []
+for well in timeseries_df.columns:
+    obs = timeseries_df[well].dropna()
+    for t, value in obs.items():
+        rows.append({
+            "well": well,
+            "time": t,
+            "obs": value,
+            "sim_min": sim_min[well].sel(time=t).item(),
+            "sim_median": sim_median[well].sel(time=t).item(),
+            "sim_max": sim_max[well].sel(time=t).item()
+        })
+compare_df = pd.DataFrame(rows)
+
+# calc R2 score
+obs, sim = compare_df['obs'], compare_df['sim_median']
+ss_res = np.sum((obs - sim) ** 2)
+ss_tot = np.sum((obs - obs.mean()) ** 2)
+r2 = 1 - ss_res / ss_tot
+print(f"R² (obs vs sim_median): {r2:.3f}")
+
+# =============================================================================
+# Scatter plot: observed vs simulated heads
+# =============================================================================
+### FIGURE B.1 ###
+fig, ax = plt.subplots(figsize=(7, 7))
+
+# Calculate error bars
+yerr = np.vstack([
+    (compare_df["sim_median"] - compare_df["sim_min"]).values,
+    (compare_df["sim_max"] - compare_df["sim_median"]).values,
+])
+
+ax.errorbar(
+    compare_df["obs"],
+    compare_df["sim_median"],
+    yerr=yerr,
+    fmt="o",
+    alpha=0.5,
+    ecolor="gray",
+    capsize=0,
+    ms=3,
+)
+
+lims = [
+    min(compare_df[["obs", "sim_min"]].min()),
+    max(compare_df[["obs", "sim_max"]].max()),
+]
+ax.plot(lims, lims, "k--", lw=1, label="1:1")
+
+ax.set_xlabel("Observed head (m)")
+ax.set_ylabel("Simulated head (median)\n(error bars = min-max)")
+ax.set_title("Observed vs simulated groundwater heads")
+ax.legend()
+fig.tight_layout()
+
+# save as PDF file
+# outfile
+fig_B1_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_B1.pdf')
+fig.savefig(fig_B1_path, format="pdf", bbox_inches="tight")  
+
+# =============================================================================
+# Box plot: observed vs simulated trends
+# =============================================================================
+### FIGURE B.2 ###
+# box plots trends
+# Data and labels
+data = [
+    trend_summary['obs_slope'],
+    trend_summary['sim_min'],
+    trend_summary['sim_median'],
+    trend_summary['sim_max']
+]
+labels = ['Observed', 'Simulated min', 'Simulated median', 'Simulated max']
+
+# Create plot
+fig, ax = plt.subplots(figsize=(10, 6))
+bp = ax.boxplot(data, patch_artist=True)
+
+# Color: obs in blue, all sims in orange
+for i, patch in enumerate(bp['boxes']):
+    patch.set_facecolor('#1F78B4' if i == 0 else '#cc4c02')
+
+ax.set_xticklabels(labels)
+ax.set_ylabel('Theil-Sen slope (m/year)')
+ax.grid(axis='y', alpha=0.3)
+plt.show()
+
+# save as PDF file
+# outfile
+fig_B2_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_B2.pdf')
+fig.savefig(fig_B2_path, format="pdf", bbox_inches="tight")  
+
+
+# =============================================================================
+# Plot wells obs vs sim with the most observations
+# =============================================================================
+### FIGURE B.3 ###
+nplots = 12
+nrows, ncols = 4, 3
+
+best_wells = (
+    timeseries_df.notna()
+    .sum()
+    .sort_values(ascending=False)
+    .head(nplots)
+    .index
+)
+
+fig, axes = plt.subplots(
+    nrows,
+    ncols,
+    figsize=(15, 16),
+    sharex=True,
+    constrained_layout=True,
+)
+
+axes = axes.ravel()
+
+for ax, well in zip(axes, best_wells):
+
+    # Ensemble envelope
+    ax.fill_between(
+        sim_median.time.values,
+        sim_min[well].values,
+        sim_max[well].values,
+        color="C0",
+        alpha=0.25,
+        label="Model range",
+    )
+
+    # Ensemble median
+    ax.plot(
+        sim_median.time.values,
+        sim_median[well].values,
+        color="C0",
+        lw=2,
+        label="Model median",
+    )
+
+    # Observations
+    ax.plot(
+        timeseries_df.index,
+        timeseries_df[well],
+        "ko",
+        ms=3.5,
+        label="Observations",
+    )
+
+    ax.set_title(f"{well} (N={timeseries_df[well].count()})", fontsize=10)
+    ax.grid(alpha=0.3)
+
+    # Fix x-limits
+    ax.set_xlim(pd.Timestamp("1980-01-01"), sim_median.time.values[-1])
+
+# Remove unused axes
+for ax in axes[len(best_wells):]:
+    fig.delaxes(ax)
+
+for ax in axes:
+    ax.tick_params(axis="x", labelrotation=45)
+
+# Shared legend
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(
+    handles,
+    labels,
+    loc="lower center",
+    ncol=3,
+    frameon=False,
+)
+
+fig.suptitle("Observed and simulated groundwater heads", fontsize=16)
+
+# save as PDF file
+# outfile
+fig_B3_path = os.path.join(main_dir, '2_model_output', 'figures', 'fig_B3.pdf')
+fig.savefig(fig_B3_path, format="pdf", bbox_inches="tight")  
