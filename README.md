@@ -82,3 +82,5 @@ van Broekhoven, F. J. G., Dekker, S. C., Griffioen, J., Bhagwat, A., and Schot, 
 
 Frank van Broekhoven (f.j.g.vanbroekhoven@uu.nl), [ORCiD](https://orcid.org/0009-0008-1593-9842), 
 Utrecht University, Copernicus Institute of Sustainable Development  
+
+[![DOI](https://zenodo.org/badge/1187094795.svg)](https://doi.org/10.5281/zenodo.191316211)
