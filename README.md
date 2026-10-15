@@ -5,7 +5,7 @@ This repository contains data and code for the article:
 ## Changes in groundwater-surface water interactions following two centuries of irrigation practices and groundwater use in the Upper Ganges-Yamuna interfluve, North India.
 
 * **Authors**: F.J.G. van Broekhoven\*, S.C. Dekker,  J. Griffioen, A. Bhagwat, and P.P. Schot
-* **Published in**: ... , DOI: ...
+* **Published in**: Hydrology and Earth System Sciences,  DOI: https://doi.org/10.5194/hess-30-6315-2026
 * **Corresponding Author**: Frank van Broekhoven (f.j.g.vanbroekhoven@uu.nl), [ORCiD](https://orcid.org/0009-0008-1593-9842)
 
 
@@ -72,7 +72,9 @@ The scripts are numbered to reflect the processing order:
 
 ## Citation
 
-When using any material from this repository for your projects, please cite the article as specified: .....
+When using any material from this repository for your projects, please cite the article as:
+
+van Broekhoven, F. J. G., Dekker, S. C., Griffioen, J., Bhagwat, A., and Schot, P. P.: Changes in groundwater-surface water interactions following two centuries of irrigation practices and groundwater use in the Upper Ganges-Yamuna interfluve, North India, Hydrol. Earth Syst. Sci., 30, 6315–6337, https://doi.org/10.5194/hess-30-6315-2026, 2026. 
 
 ---
 
